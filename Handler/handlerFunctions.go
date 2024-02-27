@@ -93,9 +93,19 @@ func booksBylanguage(language string) (BookCount, string) {
 func Bookcount(w http.ResponseWriter, r *http.Request) {
 	// Getting parameters (languages)
 	languagesString := r.URL.Query().Get("language")
+
+	// A language parameter is required, so if there is none, the user is instructed
 	if languagesString == "" {
-		http.Error(w, "Please select one or more languages.", http.StatusBadRequest)
-		return
+		instructions := "To use this service, add a language parameter."
+		instructions += "\nExample: localhost:8080/librarystats/v1/bookcount/?language=no"
+		instructions += "\nYou can write multiple languages as well."
+		instructions += "\nExample: localhost:8080/librarystats/v1/bookcount/?language=no,fi"
+
+		_, err := fmt.Fprint(w, instructions)
+		if err != nil {
+			http.Error(w, "Error during generation of response.", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	languages := strings.Split(languagesString, ",")
@@ -128,11 +138,30 @@ func Bookcount(w http.ResponseWriter, r *http.Request) {
 }
 
 func Readership(w http.ResponseWriter, r *http.Request) {
-	//l2c_url := "http://129.241.150.113:3000/language2countries/"
-	//countries_url := "http://129.241.150.113:8080/v3.1"
+	pathArr := strings.Split(r.URL.Path, "/")
+	subpath := ""
+
+	if len(pathArr) >= 5 {
+		subpath = pathArr[4][0:2] //Getting the subpath(language)
+	}
+
+	// If language is not specified, the user is instructed
+	if subpath == "" {
+		instructions := "To use this service, choose a language."
+		instructions += "\nExample: localhost:8080/librarystats/v1/readership/no"
+		instructions += "\nYou can also add a limit parameter, to limit the amount of countries you want to see."
+		instructions += "\nExample: localhost:8080/librarystats/v1/readership/en/?limit=8"
+
+		_, err := fmt.Fprint(w, instructions)
+		if err != nil {
+			http.Error(w, "Error during generation of response.", http.StatusInternalServerError)
+			return
+		}
+
+		return
+	}
 
 	limitStr := r.URL.Query().Get("limit")
-
 	limit, errLmt := strconv.Atoi(limitStr)
 
 	if limitStr == "" {
@@ -141,8 +170,6 @@ func Readership(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid parameter.", http.StatusBadRequest)
 		return
 	}
-
-	subpath := strings.Split(r.URL.Path, "/")[4][0:2] //Getting the subpath(language)
 
 	l2c_url := "http://129.241.150.113:3000/language2countries/" + subpath
 
@@ -171,8 +198,7 @@ func Readership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cAmt := min(len(data0), limit)
-	fmt.Println(cAmt)
+	cAmt := min(len(data0), limit) // Amount of countries
 
 	var countries []Countries
 
@@ -238,7 +264,6 @@ func Status(w http.ResponseWriter, r *http.Request) {
 	defer res_countries.Body.Close()
 
 	currentTime := time.Since(StartTime)
-	fmt.Println(currentTime)
 	uptime := currentTime.Seconds()
 
 	status := API_Status{
