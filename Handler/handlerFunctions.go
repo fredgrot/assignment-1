@@ -61,7 +61,7 @@ func booksBylanguage(language string) (BookCount, string) {
 			authors := data.Results[j].Authors
 			l := len(authors)
 
-			if l > 0 { // If the author is unknown, we don't count the book
+			if l > 0 { // If the author is unknown, the book is not counted
 				bookAmt++
 				for k := 0; k < l; k++ { // Checking all authors
 					name := authors[k].Name
@@ -95,6 +95,7 @@ func Bookcount(w http.ResponseWriter, r *http.Request) {
 	languagesString := r.URL.Query().Get("language")
 
 	// A language parameter is required, so if there is none, the user is instructed
+	// on how to use the service.
 	if languagesString == "" {
 		instructions := "To use this service, add a language parameter."
 		instructions += "\nExample: localhost:8080/librarystats/v1/bookcount/?language=no"
@@ -142,12 +143,12 @@ func Readership(w http.ResponseWriter, r *http.Request) {
 	subpath := ""
 
 	if len(pathArr) >= 5 {
-		subpath = pathArr[4][0:2] //Getting the subpath(language)
+		subpath = pathArr[4] //Getting the subpath(language)
 	}
 
 	// If language is not specified, the user is instructed
 	if subpath == "" {
-		instructions := "To use this service, choose a language."
+		instructions := "To use this service, specify a language."
 		instructions += "\nExample: localhost:8080/librarystats/v1/readership/no"
 		instructions += "\nYou can also add a limit parameter, to limit the amount of countries you want to see."
 		instructions += "\nExample: localhost:8080/librarystats/v1/readership/en/?limit=8"
@@ -161,12 +162,13 @@ func Readership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Getting the limit parameter
 	limitStr := r.URL.Query().Get("limit")
 	limit, errLmt := strconv.Atoi(limitStr)
 
-	if limitStr == "" {
+	if limitStr == "" { // If the user has not specified a limit
 		limit = 999
-	} else if errLmt != nil || limit < 1 {
+	} else if errLmt != nil || limit < 1 { // If the limit parameter is invalid
 		http.Error(w, "Invalid parameter.", http.StatusBadRequest)
 		return
 	}
@@ -198,7 +200,7 @@ func Readership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cAmt := min(len(data0), limit) // Amount of countries
+	cAmt := min(len(data0), limit) // Amount of countries, limited to the limit parameter
 
 	var countries []Countries
 
@@ -245,24 +247,28 @@ func Status(w http.ResponseWriter, r *http.Request) {
 	l2c_url := "http://129.241.150.113:3000/language2countries/"
 	countries_url := "http://129.241.150.113:8080/"
 
+	// Getting status code from Gutendex
 	res_books, err := http.Get(books_url)
 	if err != nil {
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 	}
 	defer res_books.Body.Close()
 
+	// Getting status code from Language2Countries
 	res_l2c, err := http.Get(l2c_url)
 	if err != nil {
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 	}
 	defer res_l2c.Body.Close()
 
+	// Getting status code from REST Countries
 	res_countries, err := http.Get(countries_url)
 	if err != nil {
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 	}
 	defer res_countries.Body.Close()
 
+	// Calculating the uptime
 	currentTime := time.Since(StartTime)
 	uptime := currentTime.Seconds()
 

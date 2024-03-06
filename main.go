@@ -18,6 +18,7 @@ func main() {
 	http.HandleFunc(readershipP, handler.Readership)
 	http.HandleFunc(statusP, handler.Status)
 
+	// Setting start time to check uptime
 	StartTime := time.Now()
 	handler.StartTime = StartTime
 
